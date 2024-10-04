@@ -1,8 +1,7 @@
 [tool.poetry]
 name = "find-similar-behaviour-vehicles"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "Finding vehicles with similar behaviour from two specialised driving history datasets."
 readme = "README.md"
 
 [tool.poetry.dependencies]
