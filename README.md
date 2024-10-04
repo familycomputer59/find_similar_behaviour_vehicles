@@ -7,16 +7,18 @@ poetry add git+https://github.com/familycomputer59/find_similar_behaviour_vehicl
 
 ## Sample Code
 ```
-import vehicleDataPreprocessor as vd
-import vehiclePairSimilarityPocessor as vsp
+# sample usage
+
+import find_similar_behaviour_vehicles.vehicleDataPreprocessor as vd
+import find_similar_behaviour_vehicles.vehiclePairSimilarityProcessor as vsp
 import pandas as pd
 
-# ETC2.0 データ想定
-file_path_1 = './data/data.csv'
+# ETC2.0 データ想定(挙動履歴情報)
+file_path_1 = 'data/data_1-4.csv'
 df_1 = pd.read_csv(file_path_1)
 
 # ITS Connect データ想定
-file_path_2 = './data/output_231208_4.csv'
+file_path_2 = 'data/output_231208_4.csv'
 df_2 = pd.read_csv(file_path_2)
 
 preprocessor = vd.VehicleDataPreprocessor(df_1, df_2)
@@ -24,7 +26,7 @@ preprocced_df_1, preprocced_df_2 = preprocessor.preprocess()
 
 print("preprosessing finished")
 
-flg_debug = True
+flg_debug = False
 
 processor = vsp.VehiclePairSimilarityProcessor(preprocced_df_1, preprocced_df_2,
             distance_threshold=0.15, # 位置差の閾値  
@@ -45,9 +47,9 @@ result = processor.aggregate_and_filter_results(similarity_data)
 print("finalyezed data")
 
 if flg_debug:
-    result.to_csv('out/Final_Similarity_Results_Filtered.csv', index=False)
+    result.to_csv('out/debbuging.csv', index=False)
 else:
     df_filtered = df_2[df_2['VehicleID'].isin(result)]
-    df_filtered.to_csv('out/extract_itsdata.csv', index=False)
+    df_filtered.to_csv('out/extract_data.csv', index=False)
 
 ```
