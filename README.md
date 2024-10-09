@@ -6,8 +6,8 @@ poetry add git+https://github.com/familycomputer59/find_similar_behaviour_vehicl
 # Sample Code
 ## 走行履歴情報 様式１－２ データ
 ```
-import vehicleDataPreprocessor as vd
-import vehiclePairSimilarityProcessor as vsp
+import find_similar_behaviour_vehicles.vehicleDataPreprocessor as vd
+import find_similar_behaviour_vehicles.vehiclePairSimilarityProcessor as vsp
 import pandas as pd
 
 flg_debug = False
@@ -61,8 +61,8 @@ else:
 
 ## 挙動履歴情報 様式１－４ データ
 ```code
-import vehicleDataPreprocessor as vd
-import vehiclePairSimilarityProcessor as vsp
+import find_similar_behaviour_vehicles.vehicleDataPreprocessor as vd
+import find_similar_behaviour_vehicles.vehiclePairSimilarityProcessor as vsp
 import pandas as pd
 
 flg_debug = False
