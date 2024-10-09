@@ -1,6 +1,7 @@
 [tool.poetry]
 name = "find-similar-behaviour-vehicles"
 version = "0.1.0"
+authors = ["famicom"]
 description = "Finding vehicles with similar behaviour from two specialised driving history datasets."
 readme = "README.md"
 

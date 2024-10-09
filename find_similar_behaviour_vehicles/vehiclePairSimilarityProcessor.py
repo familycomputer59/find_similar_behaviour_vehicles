@@ -3,24 +3,23 @@ from math import radians, cos, sin, sqrt, atan2
 from joblib import Parallel, delayed
 from datetime import datetime, timedelta
 
+# 車両方位角データがない場合
 class VehiclePairSimilarityProcessor:
     def __init__(
             self, 
             df_1, df_2, 
-            distance_threshold=0.15, # 位置差の閾値  
-            speed_threshold=20,  # 速度差の閾値
-            heading_threshold=6,  # 走行方向差の閾値
+            distance_threshold=0.4, # 位置差の閾値  
+            speed_threshold=30,  # 速度差の閾値
             similarity_threshold=0.6,  # 類似性の閾値
             std_threshold=0.02, # 標準偏差のばらつきの閾値
             similarity_count_threshold=2, # 類似データの最低個数
             time_tolerance=0,  # 比較対象のタイムスタンプの範囲（変更しないほうがよい）
-            weight=[0.5, 0.3, 0.2],  # 重み(distance, speed, heading) 合計 1 になるように設定
+            weight=[0.7, 0.3],  # 重み(distance, speed, heading) 合計 1 になるように設定
             flg_debug=False,
     ):
         try:
             self.DISTANCE_THRESHOLD = distance_threshold
             self.SPEED_THRESHOLD = speed_threshold
-            self.HEADING_THRESHOLD = heading_threshold
             self.SIMILARITY_THRESHOLD = similarity_threshold
             self.STD_THRESHOLD = std_threshold
             self.similarity_count_threshold = similarity_count_threshold
@@ -55,13 +54,11 @@ class VehiclePairSimilarityProcessor:
         try:
             distance = self.haversine(df_1_row['Latitude'], df_1_row['Longitude'], df_2_row['Latitude'], df_2_row['Longitude'])
             speed_diff = abs(df_1_row['Speed'] - df_2_row['Speed'])
-            heading_diff = abs(df_1_row['Heading'] - df_2_row['Heading'])
 
             distance_score = (1 - min(distance / self.DISTANCE_THRESHOLD, 1)) * self.weight[0]
             speed_score = (1 - min(speed_diff / self.SPEED_THRESHOLD, 1)) * self.weight[1]
-            heading_score = (1 - min(heading_diff / self.HEADING_THRESHOLD, 1)) * self.weight[2]
-
-            return distance_score + speed_score + heading_score
+            
+            return distance_score + speed_score
         
         except KeyError as e:
             raise KeyError(f"Missing expected column in data: {e}")
@@ -89,7 +86,8 @@ class VehiclePairSimilarityProcessor:
                 similarity_results.append({
                     'df_1_VehicleID': df_1_row['VehicleID'],
                     'df_2_VehicleID': df_2_row['VehicleID'],
-                    'Similarity': similarity
+                    'Similarity': similarity,
+                    'Timestamp': df_1_row['Timestamp'] 
                 })
 
             return similarity_results
@@ -108,13 +106,15 @@ class VehiclePairSimilarityProcessor:
     def aggregate_and_filter_results(self, similarity_data):
         try:
             similarity_df = pd.DataFrame(similarity_data)
+            
             aggregated_similarity_df = similarity_df.groupby(['df_1_VehicleID', 'df_2_VehicleID']).agg(
                 Median_Similarity=('Similarity', 'median'),
                 Std_Similarity=('Similarity', 'std'),
-                Count_Similarity=('Similarity', 'count')
+                Count_Timestamps=('Timestamp', 'nunique')
             ).reset_index()
+            
+            aggregated_similarity_df = aggregated_similarity_df[aggregated_similarity_df['Count_Timestamps'] >= self.similarity_count_threshold].reset_index(drop=True)
 
-            aggregated_similarity_df = aggregated_similarity_df[aggregated_similarity_df['Count_Similarity'] > self.similarity_count_threshold].reset_index(drop=True)
 
             aggregated_similarity_df['Final_Similarity'] = aggregated_similarity_df.apply(
                 lambda row: row['Median_Similarity'] if row['Std_Similarity'] <= self.STD_THRESHOLD and row['Median_Similarity'] >= self.SIMILARITY_THRESHOLD else None,
@@ -134,3 +134,47 @@ class VehiclePairSimilarityProcessor:
             raise KeyError(f"Error in grouping or column access: {e}")
         except Exception as e:
             raise ValueError(f"Error aggregating and filtering results: {e}")
+
+# 車両方位角データがある場合
+class VehiclePairSimilarityProcessorWithHeading(VehiclePairSimilarityProcessor):
+    def __init__(
+            self, 
+            df_1, df_2, 
+            distance_threshold=0.4, # 位置差の閾値  
+            speed_threshold=30,  # 速度差の閾値
+            heading_threshold=6,  # 走行方向差の閾値
+            similarity_threshold=0.6,  # 類似性の閾値
+            std_threshold=0.02, # 標準偏差のばらつきの閾値
+            similarity_count_threshold=2, # 類似データの最低個数
+            time_tolerance=0,  # 比較対象のタイムスタンプの範囲（変更しないほうがよい）
+            weight=[0.5, 0.3, 0.2],  # 重み(distance, speed, heading) 合計 1 になるように設定
+            flg_debug=False,
+        ):
+        super().__init__(df_1, df_2,
+                        distance_threshold,
+                        speed_threshold,  
+                        similarity_threshold,
+                        std_threshold,
+                        similarity_count_threshold,
+                        time_tolerance,
+                        weight,
+                        flg_debug)
+        self.HEADING_THRESHOLD = heading_threshold
+
+    def calculate_similarity(self, df_1_row, df_2_row):
+        try:
+            distance = self.haversine(df_1_row['Latitude'], df_1_row['Longitude'], df_2_row['Latitude'], df_2_row['Longitude'])
+            speed_diff = abs(df_1_row['Speed'] - df_2_row['Speed'])
+            heading_diff = abs(df_1_row['Heading'] - df_2_row['Heading'])
+
+            distance_score = (1 - min(distance / self.DISTANCE_THRESHOLD, 1)) * self.weight[0]
+            speed_score = (1 - min(speed_diff / self.SPEED_THRESHOLD, 1)) * self.weight[1]
+            heading_score = (1 - min(heading_diff / self.HEADING_THRESHOLD, 1)) * self.weight[2]
+
+            return distance_score + speed_score + heading_score
+        
+        except KeyError as e:
+            raise KeyError(f"Missing expected column in data: {e}")
+        except Exception as e:
+            raise ValueError(f"Error calculating similarity: {e}")
+        
